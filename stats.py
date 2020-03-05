@@ -21,7 +21,9 @@ def word_counter_msgs(messages, forbidden_words = None):
         for word in msg[0].split():
             # ~ is reserved for special msgs - video or audio, strip every other punctuation sign
             word = word.strip(string.punctuation.replace('~',''))
-            if '~' not in word:
+            if len(word) == 0:
+                break
+            if '~' != word[0]:
                 word = word.lower()
             if forbidden_words:
                 if word in forbidden_words:
@@ -71,26 +73,54 @@ def load_json(json_file):
         chat_stats = json.load(fp)
     return chat_stats
 
-def get_kurwa_coefficients(word_counts, msg_stats):
+def get_kurwa_coefficients(word_counts, msg_stats, odmiana = False):
     coeffs = {}
+    kurwas = {sender: 0 for sender in word_counts}
+
     for sender in word_counts:
-        #kurwas per message
-        if 'kurwa' in word_counts[sender]:
-            coeffs[sender] = "{:.1%}".format(word_counts[sender]['kurwa']/msg_stats[sender][0])
+        if odmiana is True:
+             for word in word_counts[sender]:
+                if 'kurw' in word or 'kurew' in word:
+                    kurwas[sender] += word_counts[sender][word]
+
+        else:
+            if 'kurwa' in word_counts[sender]:
+                kurwas[sender] = word_counts[sender]['kurwa']
+            else:
+                kurwas[sender] = 0
+
+        if msg_stats[sender][0] != 0:
+            coeffs[sender] = "{:.1%}".format(kurwas[sender]/msg_stats[sender][0])
+
     return coeffs
 
 def get_profanity_coefficients(word_counts, msg_stats):
+    import profanity
     coeffs = {}
+
     for sender in word_counts:
-        pass
+        total = 0
+        for vulgarism in profanity.profanity:
+            if vulgarism in word_counts[sender]:
+                total += (word_counts[sender][vulgarism])
+        coeffs[sender] = "{:.1%}".format(total/msg_stats[sender][0])
+    return coeffs
+        
 
 
-def load_from_path(path):
+def load_from_path(path, mode):
     '''
     Return: dict {sender1: [ [msg1,date1], [msg2,date2] ... ], sender2: [...], ... }
     '''
+    #TODO wykrywanie typow plikow
     import scraper
-    return scraper.scrape(path)
+    if (mode.lower() == 'json'):
+        s = scraper.Scraper_json()
+    elif (mode.lower() == 'html'):
+        s = scraper.Scraper_html()
+        
+    return s.scrape(path)
+
         
        
 if __name__ == "__main__":
