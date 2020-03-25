@@ -13,6 +13,7 @@ MSG_PATH2 = R"D:\facebook-100002163210723\TomekTrzeciak_kbNqf2UuEg"
 #     if '.' not in file:
 #             print(file)
 
+
 class Scraper_html:
 
     def _add_to_dict(self, adict, div_msg):
@@ -58,6 +59,7 @@ class Scraper_json:
     def __init__(self):
         self.msg_types = ['photos', 'videos', 'audio_files', 'gifs', 'files', 'sticker', 'share']
 
+
     def _get_msg_type(self, msg_data):
         for atype in self.msg_types:
 
@@ -68,10 +70,16 @@ class Scraper_json:
         
                 return atype
         return 'txt'
-        
+
+    
+    def _get_files(self, path):
+        from re import match
+        files = [os.path.join(path, file) for file in os.listdir(path) if match('message_[0-9]+.json', file)]
+        return files        
+    
 
     def scrape(self, path):
-        msg_files = [os.path.join(path, file) for file in os.listdir(path) if '.json' in file]
+        msg_files = self._get_files(path)
         chat = {}
 
         for file in msg_files:
@@ -112,23 +120,35 @@ class Scraper_json:
         with open(output_path, 'w', encoding='utf-8') as fp:
             json.dump(self.scrape(source_path), fp)
 
+
     def scrape_to_df(self, path):  
         import pandas as pd
 
-        with open(path) as fp:
-            fdict = json.load(fp)
+        msg_files = self._get_files(path)
+        df = pd.DataFrame()
 
-        for p in fdict['participants']:
-            p['name'] = p['name'].encode('latin1').decode('utf8')
+        for file in msg_files:
 
-        for msg in fdict['messages']:
-            if 'content' in msg:
-                msg['content'] = msg['content'].encode('latin1').decode('utf8')
-            msg['sender_name'] = msg['sender_name'].encode('latin1').decode('utf8')
+            with open(file, encoding='utf-8') as fp:
+                file_dict = json.load(fp)
 
-        return  pd.DataFrame(fdict['messages'])
+            # fix broken messenger encoding
+            #TODO: explain
+            for p in file_dict['participants']:
+                p['name'] = p['name'].encode('latin1').decode('utf8')
 
-                
+            for msg in file_dict['messages']:
+                if 'content' in msg:
+                    msg['content'] = msg['content'].encode('latin1').decode('utf8')
+                msg['sender_name'] = msg['sender_name'].encode('latin1').decode('utf8')
+
+            df = pd.concat( [ df, pd.DataFrame(file_dict['messages']) ], ignore_index=True, sort = True)
+
+        return df
+    
+    def scrape_to_csv(self, path, output_path):
+        df = self.scrape_to_df(path)
+        df.to_csv(output_path, encoding = 'utf-8')
 
 
 
@@ -136,4 +156,5 @@ class Scraper_json:
 
 if __name__ == "__main__":
     scraper = Scraper_json()
-    scraper.scrape_to_json(R'D:\facebook html i json\facebook-json\DanielSypula_cJS-IpkT2A', 'nowydaniel.json')
+    #scraper.scrape_to_json(R'D:\facebook html i json\facebook-json\DanielSypula_cJS-IpkT2A', 'nowydaniel.json')
+    scraper.scrape_to_csv(R'D:\facebook html i json\facebook-json\DanielSypula_cJS-IpkT2A', 'testowy.csv')

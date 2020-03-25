@@ -22,12 +22,12 @@ def word_counter_msgs(messages, forbidden_words = None):
             # ~ is reserved for special msgs - video or audio, strip every other punctuation sign
             word = word.strip(string.punctuation.replace('~',''))
             if len(word) == 0:
-                break
+                continue
             if '~' != word[0]:
                 word = word.lower()
             if forbidden_words:
                 if word in forbidden_words:
-                    break
+                    continue
             if word not in word_count:
                 word_count[word] = 1
             else:
@@ -120,6 +120,8 @@ def load_from_path(path, mode):
         s = scraper.Scraper_html()
         
     return s.scrape(path)
+
+
 
         
        
