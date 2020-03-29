@@ -213,5 +213,36 @@ def reaction_stats(chat_df):
 
     return (reactions_made, reactions_gotten)
     
+def react_percents(df, msg_stats):
+    percents = df.copy()
+    for index, row in percents.iterrows():
+        n_msgs = msg_stats[index][0]
+        percents.loc[index, :-1] = row[:-1]/n_msgs 
+    percents.fillna(0)
+    #convert to str with '%' signs, ignore the last 'most_received' column
+    percents[percents.columns[:-1]] = percents[percents.columns[:-1]].fillna(0).applymap(lambda x: f'{x:.2%}')
+    return percents
 
+def most_reactions(df, title, emoji, percent = True):
+    """Prints the 1st and 2nd person who received most of the specified emoji as a reaction
     
+    Arguments:
+        df {pd.DataFrame} -- reactions df
+        title {str} -- title for the person, eg. 'funniest' for laughing emoji
+        emoji {str} -- one of the facebook reactions in utf-8   
+    
+    Keyword Arguments:
+        percent {bool} -- [indicate whether a df with numeric values or str percentages was passed] (default: {True})
+    """    
+    if percent:
+        #cast the str percentages to float so that max index can be computed
+        emojis = df[emoji].map(lambda x: float(x.rstrip('%'))) 
+    else:
+        emojis = df[emoji]
+    first = emojis.idxmax() 
+    second = emojis.drop(index = first).idxmax()
+
+    msg = f'The {title} person is {first}: {df.loc[first, emoji]} of his messages received \'{emoji}\'' \
+         + f', 2nd place: {second} ({df.loc[second, emoji]})\n'
+    print(msg)    
+
