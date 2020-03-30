@@ -8,7 +8,7 @@ counting the same things as in stats.py but using pandas dataframe interface ins
 import string
 import pandas as pd
 import calendar
-
+import warnings
 
 def load_from_path(path):
     import scraper
@@ -35,25 +35,35 @@ def get_msg_stats(chat_df):
         msg_stats[sender] = [total_count, avg_msg_len, avg_msg_len * txt_msg_count]
     return msg_stats
 
-def get_word_counts(chat_df, filter_participants_names = False, exclude_words = None):
-    counts ={sender: {} for sender in chat_df['sender_name'].unique()}
+def get_word_counts(chat_df, filter_participants_names = False, exclude_words = None, min_len = 1):
+    senders = [sender for sender in chat_df['sender_name'].unique()]
+    counts ={sender: {} for sender in senders}
+    if filter_participants_names: 
+        senders_lc = list(map(str.lower, senders)) 
 
     for index, row in chat_df.iterrows():
         msg = row['content']
         
-        if row['type'] == 'Subscribe': #hmm chyba filtracka ksyw lepsza
+        if row['type'] == 'Subscribe':
             continue
 
         if not pd.isna(msg):
             for word in msg.split():
                 word = word.strip(string.punctuation)
                 word = word.lower()
-                if word in counts[row['sender_name']]:
-                    counts[row['sender_name']][word] += 1
-                else:
-                    counts[row['sender_name']][word] = 1
-    #sort words by descending counts
-    counts = {sender: {k:v for k,v in sorted(counts[sender].items(), key = lambda item: item[1], reverse = True)} for sender in counts}
+
+                if filter_participants_names:
+                    if any(word in sender for sender in senders_lc):
+                        continue
+
+                if len(word) >= min_len:
+                    if word in counts[row['sender_name']]:
+                        counts[row['sender_name']][word] += 1
+                    else:
+                        counts[row['sender_name']][word] = 1
+
+    #sort words by descending counts, only include non-empty dictionaries (some may have had only words shorter than the minimal length)
+    counts = {sender: {k:v for k,v in sorted(counts[sender].items(), key = lambda item: item[1], reverse = True) if v} for sender in counts}
     return counts
 
 def get_msg_types(chat_df, include_txt = False):
@@ -89,12 +99,9 @@ def epoch_to_date(epoch_series, timezone = 'CET'):
     dates = dates.apply(lambda d: d.tz_convert(tz = timezone))
     return dates
 
-def groupby_date(chat_df, frequency = 'M', clean = False):
+def groupby_date(chat_df, frequency = 'M'):
     ''' Groups number of messages by dates, sampling with the specified frequency (a pandas DateOffset) '''
     dates = epoch_to_date(chat_df['timestamp_ms'])
-    #for clean display on a plot
-    if clean:
-        return dates.groupby(dates.dt.strftime('%Y-%m')).count()
     #since groupby groups by index
     dates.index = dates
     dates = dates.groupby(pd.Grouper(freq = frequency)).size()
