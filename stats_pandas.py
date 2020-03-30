@@ -98,10 +98,7 @@ def groupby_date(chat_df, frequency = 'M', clean = False):
     #since groupby groups by index
     dates.index = dates
     dates = dates.groupby(pd.Grouper(freq = frequency)).size()
-    return dates
-def clean_up_dates(dates):
-    dates.index = dates.index.strftime('%Y-%m') ##hmm moze w funkcji plotujacej
-    return dates
+    return dates   
 
 def groupby_time(chat_df, interval = 'M', interval_names = True):
     ''' 
@@ -145,13 +142,16 @@ def get_kurwa_coefficients(word_counts, msg_stats, odmiana = False):
 
     return coeffs
 
-def get_profanity_coefficients(word_counts, msg_stats):
+def get_profanity_coefficients(word_counts, msg_stats, ignore_kurwas = False):
     import profanity
     coeffs = {}
 
     for sender in word_counts:
         total = 0
         for vulgarism in profanity.profanity:
+            if ignore_kurwas:
+                if 'kurw' in vulgarism or 'kurew' in vulgarism:
+                    continue
             if vulgarism in word_counts[sender]:
                 total += (word_counts[sender][vulgarism])
         
