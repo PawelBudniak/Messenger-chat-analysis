@@ -48,7 +48,7 @@ def get_msg_stats(chat_df):
 
 def get_word_counts(chat_df, filter_participants_names = False, exclude_words = None, min_len = 1):
     """
-    Calculate how many times each word has been used by each participant
+    Calculate how many times each word has been used by each participant (case insensitive)
     
     Arguments:
         chat_df {pd.DataFrame} -- main chat df returned by load_from_path()
@@ -187,6 +187,31 @@ def groupby_time(chat_df, interval = 'M', interval_names = True):
     if interval == 'W' and interval_names:
         times.index = times.index.map(lambda d: calendar.day_name[d])
     return times
+
+
+def word_usage_coefficients(word, word_counts, msg_stats):
+    """
+    Calculate word_count/message_count for each participant
+    
+    Arguments:
+        word {str} -- 
+       word_counts {dict} -- returned from get_word_counts()
+        msg_stats {dict} -- returned from get_msg_stats(), used to get message counts
+
+    Returns:
+        dict -- participant:coefficient
+    """
+    coeffs = {}
+
+    for sender in word_counts:
+        total = 0
+        if word in word_counts[sender]:
+            total = word_counts[sender][word]
+        n_msgs = msg_stats[sender][0]
+        
+        if n_msgs != 0: 
+            coeffs[sender] = total/n_msgs
+    return coeffs
 
 def get_kurwa_coefficients(word_counts, msg_stats, count_related = False):
     """Calculate kurwa_count/message_count for each participant
