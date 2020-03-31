@@ -1,10 +1,3 @@
-'''
-counting the same things as in stats.py but using pandas dataframe interface instead of dictionaries 
-'''
-
-#word counts by time intervals?
-#yes/no by time intervals?
-    
 import string
 import pandas as pd
 import calendar
