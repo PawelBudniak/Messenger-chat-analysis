@@ -1,3 +1,4 @@
+'''Every polish swear word, used to calculate how many vulgarisms are used in the chat'''
 profanity = ('chuj','chuja', 'chujek', 'chuju', 'chujem', 'chujnia',
 'chujowy', 'chujowa', 'chujowe', 'cipa', 'cipę', 'cipe', 'cipą',
 'cipie', 'dojebać','dojebac', 'dojebie', 'dojebał', 'dojebal',
