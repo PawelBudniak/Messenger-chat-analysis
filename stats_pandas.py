@@ -9,6 +9,8 @@ import string
 import pandas as pd
 import calendar
 import warnings
+from re import match
+from collections.abc import Collection
 
 class NoReactionsError(Exception): pass
 
@@ -189,13 +191,13 @@ def groupby_time(chat_df, interval = 'M', interval_names = True):
     return times
 
 
-def word_usage_coefficients(word, word_counts, msg_stats):
+def word_usage_coefficients(pattern, word_counts, msg_stats, regex = False):
     """
     Calculate word_count/message_count for each participant
     
     Arguments:
-        word {str} -- 
-       word_counts {dict} -- returned from get_word_counts()
+        pattern {str} -- the word str, or Collection[str], or str re pattern
+        word_counts {dict} -- returned from get_word_counts()
         msg_stats {dict} -- returned from get_msg_stats(), used to get message counts
 
     Returns:
@@ -205,9 +207,28 @@ def word_usage_coefficients(word, word_counts, msg_stats):
 
     for sender in word_counts:
         total = 0
-        if word in word_counts[sender]:
-            total = word_counts[sender][word]
         n_msgs = msg_stats[sender][0]
+        
+        # a Collection was passed
+        if not isinstance(pattern, str) and isinstance (pattern, Collection):
+            for a_word in pattern:
+                if regex:
+                    for word_sent in word_counts[sender]:
+                        if match(a_word, word_sent):
+                            total += word_counts[sender][word_sent]
+                else:
+                    if a_word in word_counts[sender]:
+                        total += word_counts[sender][a_word]
+        # a regex pattern was passed
+        elif regex:
+            for word_sent in word_counts[sender]:
+                if match(pattern, word_sent):
+                    total += word_counts[sender][word_sent]
+       
+        # a plain non-regex str object was passed
+        elif pattern in word_counts[sender]:
+            total += word_counts[sender][pattern]
+            
         
         if n_msgs != 0: 
             coeffs[sender] = total/n_msgs
