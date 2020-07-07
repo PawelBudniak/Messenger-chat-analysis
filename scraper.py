@@ -1,5 +1,4 @@
 import os
-from bs4 import BeautifulSoup
 import json
 from collections.abc import Collection, Mapping
 
@@ -12,17 +11,21 @@ def fix_encoding(var):
     (the data was stored in utf-8 and decoded in latin1, so this functions performs a reverse operation)
     
     Arguments:
-        var {str or Collection} -- [If var is a collection, then the function is applied recursively, trying to find strings to fix, non str or Collection objects are ignored]
+        var {str or Collection or Mapping} -- [If var is a collection, then the function is applied recursively, trying to find strings to fix, non str or Collection objects are ignored]
     
     Returns:
-        [str or Colletion] 
+        str/Collection/Mapping
     """
-    if isinstance(var, str):
-        return var.encode('latin1').decode('utf8')
-    elif isinstance(var, Mapping):
-        return type(var)({fix_encoding(k):fix_encoding(v) for k,v in var.items()})
-    elif isinstance(var, Collection):
-        return type(var)(fix_encoding(item) for item in var)
+    try:
+        if isinstance(var, str):
+            return var.encode('latin1').decode('utf8')
+        elif isinstance(var, Mapping):
+            return type(var)({fix_encoding(k):fix_encoding(v) for k,v in var.items()})
+        elif isinstance(var, Collection):
+            return type(var)(fix_encoding(item) for item in var)
+    except UnicodeEncodeError as e:
+        print('Can\'t decode variable:', var)
+        print('Exception msg: ', e)
 
 class Scraper_json:
     def __init__(self):
@@ -34,7 +37,10 @@ class Scraper_json:
     
     def _get_files(self, path):
         from re import match
-        files = [os.path.join(path, file) for file in os.listdir(path) if match('message_[0-9]+.json', file)]
+        fnames = [file for file in os.listdir(path) if match('message_[0-9]+.json', file)]
+        # sort files by their indexes (when sorting by str comparison 10 would be bigger than 2)
+        fnames.sort(key = lambda f: int(f[:-5].replace('message_', '')))
+        files = [os.path.join(path, file) for file in fnames]
         return files        
     
     def is_garbage_msg(self, msg):
@@ -134,47 +140,6 @@ class Scraper_json:
         with open(output_path, 'w', encoding='utf-8') as fp:
             json.dump(self.scrape(source_path), fp)
             
-class Scraper_html:
-    '''Deprecated'''
-
-    def _add_to_dict(self, adict, div_msg):
-        contents = div_msg.contents
-        if len(contents) < 3:
-            print('nie 3')
-            return
-        sender = contents[0].text
-        msg = contents[1].text
-        date = contents[2].text
-
-        #messages that include files such as photos or audios are read as empty strings, so they are ignored here
-        if msg:
-            if msg == "Click for video:":
-                msg = "~VIDEO"
-            if msg == "Click for audio:":
-                msg = "~AUDIO"
-            if sender not in adict:
-                adict[sender] = [(msg, date)]
-            else:
-                adict[sender].append((msg, date))
-
-    def scrape(self, path):
-        msg_files = [os.path.join(path, file) for file in os.listdir(path) if '.html' in file]
-        messages ={}
-
-        for file in msg_files:
-            with open(file, encoding='utf-8') as fp:
-                soup = BeautifulSoup(fp.read())
-                divs = soup.find_all('div', {'class': 'pam _3-95 _2pi0 _2lej uiBoxWhite noborder'})
-                for div in divs:
-                    self._add_to_dict(messages, div)
-        
-        return messages
-
-    def scrape_to_json(self, source_path, output_path):
-
-        with open(output_path, 'w', encoding='utf-8') as fp:
-            json.dump(self.scrape(source_path), fp)
-
 
 
 

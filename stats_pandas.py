@@ -4,6 +4,22 @@ import calendar
 import warnings
 from re import match
 from collections.abc import Collection
+from IPython.display import Image, display
+import os
+
+emojis = {
+'LIKE_EMOJI':       '👍',
+'DISLIKE_EMOJI':    '👎',
+'LAUGHING_EMOJI':   '😆',
+'HEART_EMOJI' :     '❤',
+'HEART_EYES_EMOJI': '😍',
+'SHOCKED_EMOJI':    '😮',
+'ANGRY_EMOJI':      '😠',
+'SAD_EMOJI':        '😢',
+'HEART_EMOJI_2':    '💗'
+}
+
+
 
 class NoReactionsError(Exception): pass
 
@@ -38,7 +54,7 @@ def get_msg_stats(chat_df):
         for msg in messages:
             avg_msg_len += len(msg)/txt_msg_count
             
-        msg_stats[sender] = [total_count, avg_msg_len, avg_msg_len * txt_msg_count]
+        msg_stats[sender] = [total_count, avg_msg_len, int(avg_msg_len * txt_msg_count)]
     return msg_stats
 
 def get_word_counts(chat_df, filter_participants_names = False, exclude_words = None, min_len = 1):
@@ -194,7 +210,7 @@ def word_usage_coefficients(pattern, word_counts, msg_stats, regex = False):
         msg_stats {dict} -- returned from get_msg_stats(), used to get message counts
 
     Returns:
-        dict -- participant:coefficient
+        dict -- {participant: coefficient}
     """
     coeffs = {}
 
@@ -238,7 +254,7 @@ def get_kurwa_coefficients(word_counts, msg_stats, count_related = False):
         count_related {bool} -- if True related words, such as the plural form, are also counted (default: {False})
     
     Returns:
-        dict -- participant:coefficient
+        dict -- {participant: coefficient}
     """
     coeffs = {}
     kurwas = {sender: 0 for sender in word_counts}
@@ -274,7 +290,7 @@ def get_profanity_coefficients(word_counts, msg_stats, ignore_kurwas = False):
         ignore_kurwas {bool} -- if True then every 'kurwa' related word is not counted (default: {False})
     
     Returns:
-        dict -- participant:profanity_coefficient
+        dict -- {participant: profanity_coefficient}
     """
     import profanity
     coeffs = {}
@@ -302,7 +318,7 @@ def total_reacts(chat_df):
         chat_df {pd.DataFrame} -- main chat df returned by load_from_path()
   
     Returns:
-        dict -- reaction: count
+        dict -- {reaction: count}
     """
     if 'reactions' not in chat_df:
         raise NoReactionsError('No reactions have been made in the chat')
@@ -389,6 +405,8 @@ def most_reactions(df, title, emoji, percent):
     Keyword Arguments:
         percent {bool} -- indicate whether a df with numeric values or str percentages was passed
     """    
+    if emoji not in df:
+        return
     if percent:
         #cast the str percentages to float so that max index can be computed
         emojis = df[emoji].map(lambda x: float(x.rstrip('%'))) 
@@ -400,4 +418,166 @@ def most_reactions(df, title, emoji, percent):
     msg = f'The {title} person is {first}: {df.loc[first, emoji]} of his messages received \'{emoji}\'' \
          + f', 2nd place: {second} ({df.loc[second, emoji]})\n'
     print(msg)    
+
+
+
+def most_reacts_msg(chat_df, react):
+    """
+    Get index of message in chat_df which received the most reactions of type react
+
+    Args:
+        chat_df (pd.DataFrame): main chat df returned by load_from_path()
+        react (str): react emoji in utf-8 
+
+    Returns:
+        int: index of msg in chat_df
+    """
+    max_count = 0
+    max_idx = None
+
+    for idx, row in chat_df.loc[~pd.isna(chat_df['reactions'])].iterrows():
+
+        count = n_reacts(row.reactions, react)
+
+        if count > max_count:
+            max_count = count
+            max_idx = idx
+    return max_idx
+
+
+def print_reaction_records(chat_df):
+    """
+    Print messages which recieved the biggest number of each reation
+
+    Args:
+        chat_df (pd.DataFrame): main chat df returned by load_from_path()
+    """
+
+    for emoji in emojis.values():
+        index = most_reacts_msg(chat_df, emoji)
+        if index is None:
+            continue
+
+        row = chat_df.loc[index]
+        print ('\n', row.sender_name,':', emoji)
+        if not pd.isna(row.content):
+            print(row.content)
+        else:
+            print('<media>')
+
+def my_isna(val):
+    '''
+    pd.isna(val) returs a numpy bool array for an array-like val, which has an ambiguous truth value
+    this function returns False for any array-like input
+    '''
+    ret = pd.isna(val)
+    if type(ret) is bool:
+        return ret
+    else:
+        return False
+
+def n_reacts(react_info, react):
+    """
+    Get the number of reactions of type react that a message received
+
+    Args:
+        react_info (list): this messsage's reactions field in the chat dataframe 
+        react (str): react emoji in utf-8 
+
+    Returns:
+        int: reacts received
+    """
+
+    if my_isna(react_info):
+        return 0
+        
+    count = 0
+    for info in react_info:
+        if info['reaction'] == react:
+            count += 1
+    return count
+
+def sort_by_reacts(chat_df, react):
+    """
+    Sort the chat_df by messages that received the most of reactions of type react
+
+    Args:
+        chat_df (pd.DataFrame): main chat df returned by load_from_path()
+        react (str): react emoji in utf-8
+
+    Returns:
+        pd.DataFrame: sorted df
+    """
+        
+    col = chat_df.reactions
+    temp = col.values.tolist()
+    order = sorted(range(len(temp)), key=lambda j: n_reacts(temp[j], react), reverse = True)
+    return chat_df.iloc[order]
+
+
+def print_adjacent_msgs(chat_df,chat_path,  idx, how_many):
+    """
+    Print n messages following/preceding the message pointed to by idx
+
+    Args:
+        chat_df (pd.DataFrame): main chat df returned by load_from_path()
+        chat_path (str): path to the current chat directory
+        idx (int): message index
+        how_many (int): n msgs to print. If negative: earlier messages will be printed, if positive - following messages.
+    """
+    if how_many < 0:
+        indices = range(idx - how_many , idx , -1)
+    else:
+        indices = range(idx - 1 , idx - how_many-1, -1)
+    
+    for i in indices:
+        # check edge cases: messages before first and after last
+        if i < 0 or i >= len(chat_df):
+            continue
+
+        row = chat_df.iloc[i]
+        print(f'\t sender: {row.sender_name} ', pd.to_datetime(row.timestamp_ms, unit = 'ms'))
+        print('\t', end = '')
+        if not my_isna(row.content):
+            print ('content: ', row.content, '\n')
+            pass
+        # if the message is a photo display it in the notebook
+        elif not my_isna(row.photos) and len(row.photos) == 1:
+            fname = os.path.basename(row.photos[0]['uri'])
+            path = os.path.join(chat_path, 'photos', fname)
+            display(Image(filename = path,width = 200, height = 100))
+        else:
+            print(row.type)
+            
+
+
+def most_reacted_msgs(chat_df, chat_path, react, how_many = 10, context = 0):
+    """
+    Print messages which received the biggest number of reactions of type react
+
+    Args:
+        chat_df (pd.DataFrame): main chat df returned by load_from_path()
+        chat_path (str): path to the current chat directory
+        react (str): react emoji in utf-8
+        how_many (int, optional): How many top messages should be printed. Defaults to 10.
+        context (int, optional): How many following and preceding messages should be additionaly printed for context. Defaults to 0.
+    """
+    for idx, row in sort_by_reacts(chat_df, react).head(how_many).iterrows():
+        n = n_reacts(row.reactions, react)
+
+        print_adjacent_msgs(chat_df,chat_path, idx, -context)
+
+        print(f'{react}: {n},  sender: {row.sender_name} ', pd.to_datetime(row.timestamp_ms, unit = 'ms'))
+        if not my_isna(row.content):
+            print ('content: ', row.content, '\n')
+        elif not my_isna(row.photos) and len(row.photos) == 1:
+            fname = os.path.basename(row.photos[0]['uri']) #.split('/')[-1]
+            path = os.path.join(chat_path, 'photos', fname)
+            display(Image(filename = path))
+
+        print_adjacent_msgs(chat_df,chat_path,  idx, context)
+
+        print('\n', '='*40, '\n', '='*40, '\n')
+
+
 
