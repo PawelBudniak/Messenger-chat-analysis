@@ -143,7 +143,6 @@ def get_msg_types(chat_df, include_txt = False):
     return type_counts_by_sender
 
 def epoch_to_date(epoch_series, timezone = 'CET'):
-    #assumes the timestamp_ms is always in GMT
     dates = pd.to_datetime(epoch_series, unit ='ms')
     dates = dates.apply(lambda d: d.tz_localize(tz = 'GMT'))
     dates = dates.apply(lambda d: d.tz_convert(tz = timezone))
@@ -200,6 +199,34 @@ def groupby_time(chat_df, interval = 'M', interval_names = True):
     return times
 
 
+def _word_count(pattern, sender, word_counts, regex = False):
+
+    total = 0
+
+
+    # a Collection was passed
+    if not isinstance(pattern, str) and isinstance (pattern, Collection):
+            for a_word in pattern:
+                if regex:
+                    for word_sent in word_counts[sender]:
+                        if match(a_word, word_sent):
+                            total += word_counts[sender][word_sent]
+                else:
+                    if a_word in word_counts[sender]:
+                        total += word_counts[sender][a_word]
+    # a regex pattern was passed
+    elif regex:
+        for word_sent in word_counts[sender]:
+            if match(pattern, word_sent):
+                total += word_counts[sender][word_sent]
+    
+    # a plain non-regex str object was passed
+    elif pattern in word_counts[sender]:
+        total += word_counts[sender][pattern]
+
+    return total
+
+
 def word_usage_coefficients(pattern, word_counts, msg_stats, regex = False):
     """
     Calculate word_count/message_count for each participant
@@ -215,28 +242,30 @@ def word_usage_coefficients(pattern, word_counts, msg_stats, regex = False):
     coeffs = {}
 
     for sender in word_counts:
-        total = 0
+        #total = 0
         n_msgs = msg_stats[sender][0]
         
-        # a Collection was passed
-        if not isinstance(pattern, str) and isinstance (pattern, Collection):
-            for a_word in pattern:
-                if regex:
-                    for word_sent in word_counts[sender]:
-                        if match(a_word, word_sent):
-                            total += word_counts[sender][word_sent]
-                else:
-                    if a_word in word_counts[sender]:
-                        total += word_counts[sender][a_word]
-        # a regex pattern was passed
-        elif regex:
-            for word_sent in word_counts[sender]:
-                if match(pattern, word_sent):
-                    total += word_counts[sender][word_sent]
+        # # a Collection was passed
+        # if not isinstance(pattern, str) and isinstance (pattern, Collection):
+        #     for a_word in pattern:
+        #         if regex:
+        #             for word_sent in word_counts[sender]:
+        #                 if match(a_word, word_sent):
+        #                     total += word_counts[sender][word_sent]
+        #         else:
+        #             if a_word in word_counts[sender]:
+        #                 total += word_counts[sender][a_word]
+        # # a regex pattern was passed
+        # elif regex:
+        #     for word_sent in word_counts[sender]:
+        #         if match(pattern, word_sent):
+        #             total += word_counts[sender][word_sent]
        
-        # a plain non-regex str object was passed
-        elif pattern in word_counts[sender]:
-            total += word_counts[sender][pattern]
+        # # a plain non-regex str object was passed
+        # elif pattern in word_counts[sender]:
+        #     total += word_counts[sender][pattern]
+
+        total = _word_count(pattern, sender, word_counts, regex)
             
         
         if n_msgs != 0: 
