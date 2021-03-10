@@ -25,6 +25,8 @@ class NoReactionsError(Exception): pass
 
 def load_from_path(path):
     import scraper
+    global chat_path
+    chat_path = path # TODO: do it without
     s = scraper.Scraper_json()
     return s.scrape_to_df(path)
 
@@ -445,12 +447,13 @@ def most_reacts_msg(chat_df, react):
     return max_idx
 
 
-def print_reaction_records(chat_df):
+def print_reaction_records(chat_df, chat_path):
     """
     Print messages which recieved the biggest number of each reation
 
     Args:
         chat_df (pd.DataFrame): main chat df returned by load_from_path()
+        chat_path (str): path to the current chat directory
     """
 
     for emoji in emojis.values():
@@ -459,11 +462,12 @@ def print_reaction_records(chat_df):
             continue
 
         row = chat_df.loc[index]
-        print ('\n', row.sender_name,':', emoji)
-        if not pd.isna(row.content):
-            print(row.content)
-        else:
-            print('<media>')
+        # print ('\n', row.sender_name,':', emoji)
+        # if not pd.isna(row.content):
+        #     print(row.content)
+        # else:
+        #     print('<media>')
+        _print_msg(row, chat_path, react=emoji)
 
 def my_isna(val):
     '''
@@ -515,7 +519,7 @@ def sort_by_reacts(chat_df, react):
     return chat_df.iloc[order]
 
 
-def print_adjacent_msgs(chat_df,chat_path,  idx, how_many):
+def print_adjacent_msgs(chat_df, chat_path, idx, how_many):
     """
     Print n messages following/preceding the message pointed to by idx
 
@@ -536,18 +540,19 @@ def print_adjacent_msgs(chat_df,chat_path,  idx, how_many):
             continue
 
         row = chat_df.iloc[i]
-        print(f'\t sender: {row.sender_name} ', pd.to_datetime(row.timestamp_ms, unit = 'ms'))
-        print('\t', end = '')
-        if not my_isna(row.content):
-            print ('content: ', row.content, '\n')
-            pass
-        # if the message is a photo display it in the notebook
-        elif not my_isna(row.photos) and len(row.photos) == 1:
-            fname = os.path.basename(row.photos[0]['uri'])
-            path = os.path.join(chat_path, 'photos', fname)
-            display(Image(filename = path,width = 200, height = 100))
-        else:
-            print(row.type)
+        _print_msg(row, chat_path, indent = 1)
+        # print(f'\t sender: {row.sender_name} ', pd.to_datetime(row.timestamp_ms, unit = 'ms'))
+        # print('\t', end = '')
+        # if not my_isna(row.content):
+        #     print ('content: ', row.content, '\n')
+        #     pass
+        # # if the message is a photo display it in the notebook
+        # elif not my_isna(row.photos) and len(row.photos) == 1:
+        #     fname = os.path.basename(row.photos[0]['uri'])
+        #     path = os.path.join(chat_path, 'photos', fname)
+        #     display(Image(filename = path,width = 200, height = 100))
+        # else:
+        #     print(row.type)
             
 
 
@@ -567,17 +572,34 @@ def most_reacted_msgs(chat_df, chat_path, react, how_many = 10, context = 0):
 
         print_adjacent_msgs(chat_df,chat_path, idx, -context)
 
-        print(f'{react}: {n},  sender: {row.sender_name} ', pd.to_datetime(row.timestamp_ms, unit = 'ms'))
-        if not my_isna(row.content):
-            print ('content: ', row.content, '\n')
-        elif not my_isna(row.photos) and len(row.photos) == 1:
-            fname = os.path.basename(row.photos[0]['uri']) #.split('/')[-1]
-            path = os.path.join(chat_path, 'photos', fname)
-            display(Image(filename = path))
+        # print(f'{react}: {n},  sender: {row.sender_name} ', pd.to_datetime(row.timestamp_ms, unit = 'ms'))
+        # if not my_isna(row.content):
+        #     print ('content: ', row.content, '\n')
+        # elif not my_isna(row.photos) and len(row.photos) == 1:
+        #     fname = os.path.basename(row.photos[0]['uri']) #.split('/')[-1]
+        #     path = os.path.join(chat_path, 'photos', fname)
+        #     display(Image(filename = path))
+        _print_msg(row, chat_path, react=react)
 
         print_adjacent_msgs(chat_df,chat_path,  idx, context)
 
         print('\n', '='*40, '\n', '='*40, '\n')
 
 
+def _print_msg(msg, chat_path, indent = 0, react = None):
+    
+    tab = '\t' * indent
 
+    if react is not None:
+        print(f'{react}:{n_reacts(msg.reactions, react)}, ', end='')
+    print(f'{tab}sender: {msg.sender_name} ', pd.to_datetime(msg.timestamp_ms, unit = 'ms'))
+    print(tab, end='')
+    if not my_isna(msg.content):
+        print ('content: ', msg.content, '\n')
+    elif not my_isna(msg.photos) and len(msg.photos) == 1:
+        fname = os.path.basename(msg.photos[0]['uri']) #.split('/')[-1]
+        path = os.path.join(chat_path, 'photos', fname)
+        print(path)
+        display(Image(filename = path))
+    else:
+        print(msg.type)
