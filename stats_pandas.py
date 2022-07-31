@@ -6,6 +6,7 @@ from re import match
 from collections.abc import Collection
 from IPython.display import Image, display
 import os
+import scraper
 
 emojis = {
 'LIKE_EMOJI':       '👍',
@@ -24,7 +25,6 @@ emojis = {
 class NoReactionsError(Exception): pass
 
 def load_from_path(path):
-    import scraper
     s = scraper.Scraper_json()
     return s.scrape_to_df(path)
 
