@@ -42,6 +42,7 @@ class Chat:
     path: str
     message_count: int
     name: str
+    is_group: bool
 
 
 def chat_sizes(path):
@@ -65,14 +66,15 @@ def chat_sizes(path):
             chat_name = file_dict['title']
             chat_name = fix_encoding(chat_name)
             chat_size = len(file_dict['messages'])
+            is_group = len(file_dict['participants']) != 2
             if chat is None:
-                chat = Chat(path=subfolder, message_count=chat_size, name=chat_name)
+                chat = Chat(path=subfolder, message_count=chat_size, name=chat_name, is_group=is_group)
             else:
                 chat.message_count += chat_size
 
         chats.append(chat)
 
-    return sorted(chats, key=lambda c: c.message_count)
+    return sorted(chats, key=lambda c: c.message_count, reverse=True)
 
 
 

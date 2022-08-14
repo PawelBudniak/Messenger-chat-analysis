@@ -68,6 +68,9 @@ class Scraper_json:
             current_df = pd.DataFrame(file_dict['messages'])
             current_df = self.remove_garbage(current_df)
 
+            if 'content' not in current_df:
+                current_df['content'] = [''] * len(current_df)
+
             current_df['content'] = current_df['content'].map(fix_encoding, na_action = 'ignore')
             current_df['sender_name'] = current_df['sender_name'].map(fix_encoding, na_action = 'ignore')
             if 'reactions'  in current_df:
@@ -76,7 +79,7 @@ class Scraper_json:
             df = pd.concat([df, current_df], ignore_index=True, sort = False)
 
         return df
-    
+
     def scrape_to_csv(self, path, output_path):
 
         df = self.scrape_to_df(path)

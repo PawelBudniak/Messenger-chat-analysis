@@ -1,7 +1,6 @@
 import string
 import pandas as pd
 import calendar
-import warnings
 from re import match
 from collections.abc import Collection
 from IPython.display import Image, display
@@ -292,7 +291,7 @@ def get_profanity_coefficients(word_counts, msg_stats, ignore_kurwas = False):
     Returns:
         dict -- {participant: profanity_coefficient}
     """
-    import profanity
+    from src import profanity
     coeffs = {}
 
     for sender in word_counts:
