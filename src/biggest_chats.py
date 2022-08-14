@@ -46,9 +46,6 @@ class Chat:
 
 
 def chat_sizes(path):
-    """
-    Returns: {str: chat_name -> int: message_count}
-    """
     chats = []
 
     try:
