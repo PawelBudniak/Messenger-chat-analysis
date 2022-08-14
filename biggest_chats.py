@@ -41,13 +41,14 @@ def usage():
 class Chat:
     path: str
     message_count: int
+    name: str
 
 
 def chat_sizes(path):
     """
     Returns: {str: chat_name -> int: message_count}
     """
-    chats = {}
+    chats = []
 
     try:
         subfolders = (f.path for f in os.scandir(path) if f.is_dir())
@@ -56,18 +57,28 @@ def chat_sizes(path):
 
     for subfolder in subfolders:
         msg_files = get_files(subfolder)
+        chat = None
+
         for file in msg_files:
             with open(file, encoding='utf-8') as fp:
                 file_dict = json.load(fp)
             chat_name = file_dict['title']
             chat_name = fix_encoding(chat_name)
             chat_size = len(file_dict['messages'])
-            if chat_name in chats:
-                chats[chat_name] += chat_size
+            if chat is None:
+                chat = Chat(path=subfolder, message_count=chat_size, name=chat_name)
             else:
-                chats[chat_name] = chat_size
-    chats = {k: v for k, v in sorted(chats.items(), key=lambda item: item[1], reverse=True)}
-    return chats
+                chat.message_count += chat_size
+
+        chats.append(chat)
+
+    return sorted(chats, key=lambda c: c.message_count)
+
+
+
+def print_chats(chats):
+    for i, chat in enumerate(chats):
+        print(f'{i+1}. {chat.name}: {chat.message_count}')
 
 
 def main():
@@ -86,11 +97,7 @@ def main():
         usage()
 
     chats = chat_sizes(path)
-
-    for i, (chat, size) in enumerate(chats.items()):
-        print(f'{i + 1}. {chat}: {size}')
-        if (i + 1 >= howmany):
-            break
+    print_chats(chats[:howmany])
 
 
 if __name__ == '__main__':
