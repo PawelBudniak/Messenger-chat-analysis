@@ -27,6 +27,14 @@ def load_from_path(path):
     s = scraper.Scraper_json()
     return s.scrape_to_df(path)
 
+def find_chat(dir_with_all_chats, chat_name):
+    dirs = os.listdir(dir_with_all_chats)
+    matching = [d for d in dirs if chat_name in d]
+    if len(matching) != 1:
+        raise Exception(f'{chat_name} matches all of the following: {matching}')
+    s = scraper.Scraper_json()
+    return os.path.join(dir_with_all_chats,matching[0])
+
 def filter_nick_changes(chat_df):
     return chat_df[chat_df['content'].map(lambda msg: pd.isna(msg) or ( ('set the nickname' not in msg) and ('set his own nickname' not in msg)))]
 
@@ -79,7 +87,7 @@ def get_word_counts(chat_df, filter_participants_names = False, exclude_words = 
     for index, row in chat_df.iterrows():
         msg = row['content']
         
-        if row['type'] == 'Subscribe':
+        if 'type' in row and row['type'] == 'Subscribe':
             continue
 
         if not pd.isna(msg):

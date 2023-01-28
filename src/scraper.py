@@ -49,6 +49,10 @@ class Scraper_json:
         return False
 
     def remove_garbage(self, df):
+        # new data doesn't have type column?
+        if 'type' not in df.columns:
+            return df
+
         indices = df[(df['type'] == 'Subsribe') | (df['type'] == 'Unsubscribe') | (df['type'] == 'Call')].index
         df.drop(columns = 'call duration', inplace = True, errors = 'ignore')
         return df.drop(indices)

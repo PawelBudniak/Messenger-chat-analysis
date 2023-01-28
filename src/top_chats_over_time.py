@@ -26,6 +26,7 @@ def chat_sizes_by_date(path, *, top_n=-1, freq='sM', filter_groups=False):
 if __name__ == '__main__':
     import plotly.express as px
 
-    df = chat_sizes_by_date(r'C:\messenger-data\messages\inbox', top_n=15, filter_groups=False, freq='M')
+    #df = chat_sizes_by_date(r'C:\messenger-data\messages\inbox', top_n=15, filter_groups=False, freq='M')
+    df = chat_sizes_by_date(r'C:\messenger-data\29.12.2022\facebook-100002163210723\messages\inbox', top_n=15, filter_groups=False, freq='M')
     f = px.line(df, x=df.index, y=df.columns, labels={'value': 'Message count', 'x': 'Date'})
     f.show()
